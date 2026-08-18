@@ -67,11 +67,10 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    // Extract generated fields from the response
+    // Extract generated fields from completion response
     const row = result.rows?.[0];
     const columns = row?.columns ?? {};
 
-    // Helper to extract text content from a column completion
     const getColumnText = (colName: string): string => {
       const col = columns[colName];
       if (!col) return "";
@@ -97,8 +96,16 @@ export async function POST(request: NextRequest) {
       summaryFromWeb: getColumnText(JAMAI_COLUMNS.summaryFromWeb),
     };
 
-    // Try to get the row ID from the response
-    const rowId = row?.columns?.ID?.id ?? "";
+    // The addRow response doesn't include the row ID, so fetch the most recent row
+    const latestRows = await jamai.table.listRows({
+      table_type: tableType,
+      table_id: tableId,
+      offset: 0,
+      limit: 1,
+      order_by: "Updated at",
+      order_ascending: false,
+    });
+    const rowId = String(latestRows.items?.[0]?.ID ?? "");
 
     const response: GenerateCardResponse = { rowId, fields };
     return NextResponse.json(response);
